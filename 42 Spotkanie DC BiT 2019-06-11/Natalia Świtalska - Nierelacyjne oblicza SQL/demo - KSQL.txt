@@ -1,0 +1,163 @@
+1)	Windows Home 10
+2)	VirtualBox
+3)	VM - Ubuntu 19.4
+4)	Java 1.8
+5)	Confluent Platform 5.2.1
+
+
+cd /opt/kafka/confluent-5.2.1/bin
+./confluent start
+
+Starting zookeeper
+zookeeper is [UP]
+Starting kafka
+kafka is [UP]
+Starting schema-registry
+schema-registry is [UP]
+Starting kafka-rest
+kafka-rest is [UP]
+Starting connect
+connect is [UP]
+Starting ksql-server
+ksql-server is [UP]
+
+------------------------------------------------------------------------
+#1 - create topic, stream, table
+
+TOPIC
+
+./kafka-topics --list --bootstrap-server localhost:9092
+
+./kafka-topics --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic persons
+
+./kafka-topics --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 4 --topic orders
+
+
+./kafka-topics --list --bootstrap-server localhost:9092
+
+
+
+
+
+STREAM
+
+./ksql
+
+SHOW STREAMS; 
+
+CREATE STREAM persons (firstname String, lastname String, nickname String) WITH (kafka_topic='persons', value_format='json');
+
+SHOW STREAMS; 
+
+
+TABLE
+
+SHOW TABLES;
+
+CREATE STREAM orders  (location String, who String, what String) WITH (kafka_topic='orders', value_format='json');
+
+CREATE TABLE orders_table AS
+  SELECT location, who, what, COUNT(*) AS TOTAL
+  FROM orders  WINDOW TUMBLING (SIZE 1 MINUTES)
+  GROUP BY location, who, what;
+
+SHOW TABLES;
+
+
+ksql> select * from persons;
+^C
+Query terminated
+
+ksql> select * from orders;
+^C
+Query terminated
+
+
+------------------------------------------------------------------------
+#2 - insert into
+
+./kafka-console-producer --broker-list localhost:9092 --topic persons
+./kafka-console-consumer --bootstrap-server localhost:9092 --topic persons --from-beginning
+
+./kafka-console-producer --broker-list localhost:9092 --topic orders
+./kafka-console-consumer --bootstrap-server localhost:9092 --topic orders --from-beginning
+
+{"firstname":"Jon","lastname":"Snow","nickname":""}
+{"firstname":"Arya","lastname":"Stark","nickname":""}
+{"firstname":"Bran","lastname":"Stark","nickname":"Three-Eyed Raven"}
+
+{"who":"Arya","what":"Weapon","location":"Winterfell"}
+{"who":"Jon","what":"Weapon","location":"Winterfell"}
+{"who":"Bran","what":"Book","location":"Winterfell"}
+
+------------------------------------------------------------------------
+#3 - select
+
+ksql> select * from persons;
+1559674328677 | null | Jon | Snow |
+1559674333513 | null | Arya | Stark |
+1559674338497 | null | Bran | Stark | Three-Eyed Raven
+
+ksql> select * from orders_winterfell;
+
+------------------------------------------------------------------------
+
+#4 - where
+
+SET 'auto.offset.reset'='earliest';
+
+ksql> select * from persons;
+
+ksql> select firstname, lastname, nickname from persons where firstname = 'Arya';
+
+------------------------------------------------------------------------
+#5 - like
+
+ksql> select firstname, lastname, nickname from persons where lastname like 'S%';
+
+------------------------------------------------------------------------
+#6 - order by
+
+Statement: select firstname, lastname, nickname from persons order by firstname;
+Caused by: line 1:57: mismatched input 'by' expecting ';'
+Caused by: org.antlr.v4.runtime.InputMismatchException
+
+------------------------------------------------------------------------
+#7 - or /and
+
+ksql> select firstname, lastname, nickname from persons where firstname = 'Arya' or firstname = 'Bran' and lastname like 'S%' ;
+
+------------------------------------------------------------------------
+#8 - join
+
+CREATE STREAM orders_enriched AS
+  SELECT persons.firstname AS who, what FROM orders_table
+  LEFT JOIN persons ON orders_table.who = persons.firstname;
+
+------------------------------------------------------------------------
+#9 - delete
+
+Statement: delete * from persons;
+Caused by: line 1:1: mismatched input 'delete' expecting {<EOF>, '(', 'SELECT',
+    'VALUES', 'CREATE', 'REGISTER', 'TABLE', 'INSERT', 'DESCRIBE', 'PRINT',
+    'EXPLAIN', 'SHOW', 'LIST', 'TERMINATE', 'LOAD', 'DROP', 'SET', 'EXPORT',
+    'UNSET', 'RUN'}
+
+
+------------------------------------------------------------------------
+#10 - drop
+
+TERMINATE CTAS_ORDERS_TABLE_1; 
+
+DROP TABLE  orders_table;
+
+DROP STREAM orders;
+
+DROP STREAM persons;
+
+
+./kafka-topics.sh --zookeeper localhost:2181 --delete --topic orders
+./kafka-topics.sh --zookeeper localhost:2181 --delete --topic persons
+
+
+

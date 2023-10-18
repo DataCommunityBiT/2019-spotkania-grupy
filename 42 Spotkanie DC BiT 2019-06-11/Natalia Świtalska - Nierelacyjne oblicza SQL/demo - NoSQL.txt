@@ -1,0 +1,141 @@
+﻿net start MongoDB
+
+cd C:\db\mongodb\bin                                                                                           
+
+mongo   
+cls  
+
+show dbs  
+use shop
+db
+show users
+
+
+db.createUser(
+   {
+     user: "admin",
+     pwd: "admin",
+     roles: [ "readWrite", "dbAdmin" ]
+   }
+)
+
+
+show collections
+
+-------------------------------------------------------------------------------------------------
+#1 - create - Tworzenie kolekcji
+
+db.createCollection('users')
+db.createCollection('orders')
+
+show collections	
+
+-------------------------------------------------------------------------------------------------
+#2 - insert into - Dodawanie elementów (dokumentów) do kolekcji
+
+db.users.insert({first_name: "John", last_name: "Snow"});
+db.users.insert({first_name: "Arya", last_name: "Stark"});
+db.users.insert({first_name: "Brandon", last_name: "Stark", nickname: "Three-Eyed Raven"});
+
+db.orders.insert({who: "Arya", what: "New weapon"});
+db.orders.insert({who: "Arya", what: "Shoes"});
+db.orders.insert({who: "John", what: "New weapon"});
+db.orders.insert({who: "Brandon", what: "3 books"});	
+	
+-------------------------------------------------------------------------------------------------
+#3 - select - Wyświetlenie wszystkich dokumentów	
+
+db.users.find()
+db.users.find().pretty();
+db.users.find().count();  
+	
+Alternartywa: MongoDB Compass
+	
+-------------------------------------------------------------------------------------------------
+#4 - where 
+
+db.users.find({last_name: "Stark"})
+	
+MongoDB Compass
+FILTER: {last_name: "Stark"}
+		
+-------------------------------------------------------------------------------------------------
+#5 - like 
+
+db.users.find({last_name: /^S/})
+
+MongoDB Compass
+FILTER: {last_name: /^S/}	
+		
+		
+db.users.find({last_name: /^St/})
+		
+MongoDB Compass		
+FILTER: {last_name: /^Sta/}		
+	
+-------------------------------------------------------------------------------------------------
+#6 - order by
+	
+db.users.find().sort({first_name:1});    
+	
+MongoDB Compass		
+SORT: {first_name:1}
+			
+-------------------------------------------------------------------------------------------------	
+#7 - or / and
+
+db.users.find({$or:[{first_name: "John"}, {first_name:"Arya"}]});
+
+MongoDB Compass
+FILTER: {$or:[{first_name: "John"}, {first_name:"Arya"}]}
+				
+db.users.find({$and:[{first_name: "John"}, {last_name:"Stark"}]});
+db.users.find({$and:[{first_name: "John"}, {last_name:/S/}]});
+
+MongoDB Compass
+FILTER: {$and:[{first_name: "John"}, {last_name:"Stark"}]}
+FILTER: {$and:[{first_name: "John"}, {last_name:/S/}]}
+			
+-------------------------------------------------------------------------------------------------		
+#8 - join
+
+db.users.aggregate({ $lookup:{ from:"orders", localField:"first_name", foreignField:"who", as:"user_orders" } })	 
+db.users.aggregate({ $lookup:{ from:"orders", localField:"first_name", foreignField:"who", as:"user_orders" } }).pretty()                          
+	                                                                                                                                                                                                                      # MongoDB Compass
+Tab: aggregations
+Type: lookup
+	
+{
+	from: 'orders',
+	localField: 'first_name',
+	foreignField: 'who',
+	as: 'user_orders'
+}
+	
+-------------------------------------------------------------------------------------------------	
+#9 - delete
+
+db.users.find()
+		
+db.users.remove({first_name: "John"});
+db.users.find()
+	
+db.users.remove({last_name: "Stark"},{justOne: true});
+db.users.find()	
+	
+-------------------------------------------------------------------------------------------------
+#10 - drop - Usunięcie kolekcji
+
+show collections
+	
+db.users.drop()
+db.orders.drop()
+
+show collections
+	
+
+
+
+
+
+

@@ -1,0 +1,123 @@
+﻿# Uruchomienie gfsh (GemFire Shell), wystartowanie locatora i servera
+cd C:\db\pivotal-gemfire-9.7.2\bin
+gfsh
+
+start locator --name=locator1  --classpath=c:\db\pivotal-gemfire-9.7.2\lib\shop-model-1.0.0.jar
+
+start server --name=server2 --server-port=40412 --classpath=c:\db\pivotal-gemfire-9.7.2\lib\shop-model-1.0.0.jar
+	
+# Sprawdzenie listy regionów (stan początkowy: nie ma regionów)
+
+gfsh>list regions
+No Regions Found
+
+
+------------------------------------------------------------------------
+#1 - create - Tworzenie regionu
+
+create region --name=USERS --type=REPLICATE_PERSISTENT --key-constraint=java.lang.String --value-constraint=cd.demo.model.User
+create region --name=ORDERS --type=REPLICATE_PERSISTENT --key-constraint=java.lang.String --value-constraint=cd.demo.model.Order
+
+list regions
+	
+describe region --name=USERS
+describe region --name=ORDERS
+
+------------------------------------------------------------------------
+#2 - insert into - Dodawanie elementów (par key-value) do regionu (czyli w zasadzie do mapy)	
+	
+put --region=/USERS --key=arya --value=stark
+Message : value ( java.lang.String ) does not satisfy valueConstraint ( cd.demo.model.User )
+Result  : false
+
+put --region=/USERS --key-class=java.lang.String --key='Arya' --value-class=cd.demo.model.User --value=('firstname':'Arya','lastname':'Stark','nickname':'')
+put --region=/USERS --key-class=java.lang.String --key='Jon' --value-class=cd.demo.model.User --value=('firstname':'Jon','lastname':'Snow','nickname':'')
+put --region=/USERS --key-class=java.lang.String --key='Brandon' --value-class=cd.demo.model.User --value=('firstname':'Brandon','lastname':'Stark','nickname':'Three-Eyed-Raven')
+	
+
+put --region=/ORDERS --key-class=java.lang.String --key='201906_Bran' --value-class=cd.demo.model.Order --value=('who':'Bran','what':'Books')
+put --region=/ORDERS --key-class=java.lang.String --key='201906_Arya' --value-class=cd.demo.model.Order --value=('who':'Arya','what':'Weapon')
+put --region=/ORDERS --key-class=java.lang.String --key='201905_Jon' --value-class=cd.demo.model.Order --value=('who':'Jon','what':'Weapon')
+put --region=/ORDERS --key-class=java.lang.String --key='201905_Arya' --value-class=cd.demo.model.Order --value=('who':'Arya','what':'Horse')
+
+
+------------------------------------------------------------------------
+#3 - select - Wyświetlenie elementów regionu (select * from)
+
+query --query="select * from /USERS"
+
+query --query="select * from /ORDERS"
+
+query --query="select firstname, lastname, nickname  from /USERS"
+
+query --query="select who, what from /ORDERS"
+
+
+------------------------------------------------------------------------
+#4 - where 
+
+query --query="select who, what from /ORDERS where who = 'Arya'"
+
+
+------------------------------------------------------------------------
+#5 - like
+
+query --query="select firstname, lastname, nickname from /USERS where lastname like 'S%'"
+
+query --query="select firstname, lastname, nickname from /USERS where lastname like 'Sta%'"
+
+
+------------------------------------------------------------------------
+#6 - order by
+
+query --query="select distinct firstname, lastname, nickname from /USERS order by firstname"
+
+query --query="select distinct firstname, lastname, nickname from /USERS order by firstname desc"
+
+gfsh>query --query="select firstname, lastname, nickname from /USERS order by firstname desc"
+
+query --query="select who, what from /ORDERS order by who"
+
+
+------------------------------------------------------------------------
+#7 - or / and
+
+query --query="select firstname, lastname, nickname from /USERS where firstname like '%o%' AND lastname = 'Stark'"
+
+query --query="select firstname, lastname, nickname from /USERS where firstname = 'Jon' OR firstname = 'Brandon'"
+
+query --query="select firstname, lastname, nickname from /USERS where firstname = 'Jon' OR firstname = 'Brandon' AND lastname like 'St%'"
+
+
+------------------------------------------------------------------------
+#8 - join
+
+query --query="select * from /USERS u, /ORDERS o where u.firstname = o.who"
+
+query --query="select u.firstname, u.lastname, o.what from /USERS u, /ORDERS o where u.firstname = o.who"
+
+------------------------------------------------------------------------
+#9 - delete
+
+query --query="select * from /USERS"
+
+remove --region=/USERS --key=Arya
+query --query="select * from /USERS"
+
+remove --region=/USERS --all
+query --query="select * from /USERS"
+
+
+query --query="select * from /ORDERS"
+remove --region=/ORDERS --all
+
+------------------------------------------------------------------------
+
+#10 - drop - Usunięcie regionu
+
+
+destroy region --name=/USERS
+destroy region --name=/ORDERS
+
+list regions
+No Regions Found
